@@ -25,7 +25,6 @@ export default function ChatFloatingWindow() {
   useEffect(() => {
     const roomId = watchRoom?.currentRoom?.id || null;
     if (roomId !== currentRoomIdRef.current) {
-      console.log('[ChatFloatingWindow] Room changed:', currentRoomIdRef.current, '->', roomId);
       currentRoomIdRef.current = roomId;
       lastMessageCountRef.current = 0;
       setUnreadCount(0);
@@ -66,15 +65,10 @@ export default function ChatFloatingWindow() {
     if (currentCount > lastMessageCountRef.current) {
       // 有新消息
       const newMessageCount = currentCount - lastMessageCountRef.current;
-      console.log('[ChatFloatingWindow] New messages:', newMessageCount, 'isOpen:', isOpenRef.current, 'isMinimized:', isMinimizedRef.current);
 
       if (!isOpenRef.current && !isMinimizedRef.current) {
         // 只有在聊天窗口完全关闭时才增加未读计数
-        setUnreadCount(prev => {
-          const newCount = prev + newMessageCount;
-          console.log('[ChatFloatingWindow] Updating unread count:', prev, '->', newCount);
-          return newCount;
-        });
+        setUnreadCount(prev => prev + newMessageCount);
       }
     }
     lastMessageCountRef.current = currentCount;

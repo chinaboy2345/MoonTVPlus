@@ -107,6 +107,13 @@ export function useWatchRoom(onRoomDeleted?: (data?: { reason?: string }) => voi
           if (response.success && response.room) {
             setCurrentRoom(response.room);
             setIsOwner(true);
+            // 创建房间时，手动设置房主的成员信息
+            setMembers([{
+              id: sock.id!,
+              name: data.userName,
+              isOwner: true,
+              lastHeartbeat: Date.now(),
+            }]);
             storeRoomInfo({
               roomId: response.room.id,
               roomName: response.room.name,
