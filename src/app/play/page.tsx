@@ -293,6 +293,32 @@ function PlayPageClient() {
   const danmakuPluginRef = useRef<any>(null);
   const danmakuSettingsRef = useRef(danmakuSettings);
 
+  // 弹幕热力图完全禁用开关（默认不禁用，即启用热力图功能）
+  const [danmakuHeatmapDisabled, setDanmakuHeatmapDisabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('danmaku_heatmap_disabled');
+      if (v !== null) return v === 'true';
+    }
+    return false; // 默认不禁用
+  });
+  const danmakuHeatmapDisabledRef = useRef(danmakuHeatmapDisabled);
+  useEffect(() => {
+    danmakuHeatmapDisabledRef.current = danmakuHeatmapDisabled;
+  }, [danmakuHeatmapDisabled]);
+
+  // 弹幕热力图开关（默认开启）
+  const [danmakuHeatmapEnabled, setDanmakuHeatmapEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('danmaku_heatmap_enabled');
+      if (v !== null) return v === 'true';
+    }
+    return true; // 默认开启
+  });
+  const danmakuHeatmapEnabledRef = useRef(danmakuHeatmapEnabled);
+  useEffect(() => {
+    danmakuHeatmapEnabledRef.current = danmakuHeatmapEnabled;
+  }, [danmakuHeatmapEnabled]);
+
   // 多条弹幕匹配结果
   const [danmakuMatches, setDanmakuMatches] = useState<DanmakuAnime[]>([]);
   const [showDanmakuSourceSelector, setShowDanmakuSourceSelector] = useState(false);
@@ -2311,6 +2337,17 @@ function PlayPageClient() {
       setDanmakuCount(0);
     } finally {
       setDanmakuLoading(false);
+
+      // 弹幕加载完成后，根据用户设置显示或隐藏热力图（仅在未禁用热力图时）
+      if (!danmakuHeatmapDisabledRef.current) {
+        const heatmapElement = document.querySelector('.art-control-heatmap') as HTMLElement;
+        if (heatmapElement) {
+          const isEnabled = danmakuHeatmapEnabledRef.current;
+          heatmapElement.style.opacity = isEnabled ? '1' : '0';
+          heatmapElement.style.pointerEvents = isEnabled ? 'auto' : 'none';
+          console.log('弹幕加载完成，热力图状态:', isEnabled ? '显示' : '隐藏');
+        }
+      }
     }
   };
 
@@ -3136,6 +3173,7 @@ function PlayPageClient() {
             antiOverlap: true,
             synchronousPlayback: danmakuSettingsRef.current.synchronousPlayback,
             emitter: false,
+            heatmap: !danmakuHeatmapDisabledRef.current, // 根据禁用状态决定是否创建热力图
             // 主题
             theme: 'dark',
             filter: (danmu: any) => {
@@ -3216,6 +3254,33 @@ function PlayPageClient() {
               return '打开设置';
             },
           },
+          // 只有在未禁用热力图时才显示热力图开关
+          ...(!danmakuHeatmapDisabledRef.current ? [{
+            name: '弹幕热力',
+            html: '弹幕热力',
+            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" fill="#ffffff"/></svg>',
+            switch: danmakuHeatmapEnabledRef.current,
+            onSwitch: function (item: any) {
+              const newVal = !item.switch;
+              try {
+                localStorage.setItem('danmaku_heatmap_enabled', String(newVal));
+                setDanmakuHeatmapEnabled(newVal);
+
+                // 使用 opacity 控制热力图显示/隐藏
+                const heatmapElement = document.querySelector('.art-control-heatmap') as HTMLElement;
+                if (heatmapElement) {
+                  heatmapElement.style.opacity = newVal ? '1' : '0';
+                  heatmapElement.style.pointerEvents = newVal ? 'auto' : 'none';
+                  console.log('弹幕热力已', newVal ? '开启' : '关闭');
+                } else {
+                  console.warn('未找到热力图元素');
+                }
+              } catch (err) {
+                console.error('切换弹幕热力失败:', err);
+              }
+              return newVal;
+            },
+          }] : []),
           ...(webGPUSupported ? [
             {
               name: 'Anime4K超分',
@@ -3898,6 +3963,16 @@ function PlayPageClient() {
             danmakuPluginRef.current.show();
           } else {
             danmakuPluginRef.current.hide();
+          }
+
+          // 初始隐藏热力图，等待弹幕加载完成后再显示（仅在未禁用热力图时）
+          if (!danmakuHeatmapDisabledRef.current) {
+            const heatmapElement = document.querySelector('.art-control-heatmap') as HTMLElement;
+            if (heatmapElement) {
+              heatmapElement.style.opacity = '0';
+              heatmapElement.style.pointerEvents = 'none';
+              console.log('热力图初始状态: 隐藏（等待弹幕加载）');
+            }
           }
 
           // 自动搜索并加载弹幕
